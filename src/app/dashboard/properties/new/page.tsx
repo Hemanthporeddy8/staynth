@@ -16,8 +16,8 @@ export default function NewPropertyPage() {
       <ol className="mt-6 grid gap-3 sm:grid-cols-3">
         {[
           ["1", "List", "Name, price, city — cover photo optional"],
-          ["2", "360°", "Camera: 6 directions, full 360°"],
-          ["3", "Eyes", "Upload or draw a blueprint, then drop eyes"],
+          ["2", "360°", "Camera: 4-wall quick pano, single pano, or full 6 directions"],
+          ["3", "Blueprint (Optional)", "Upload, draw a blueprint, or skip anytime"],
         ].map(([step, title, body]) => (
           <li key={step} className="rounded-2xl bg-white p-4 ring-1 ring-ink/8">
             <p className="text-[10px] uppercase tracking-[0.16em] text-gold">Step {step}</p>

@@ -22,7 +22,7 @@ type Hotspot = PlanHotspot & { room?: Room | null };
 const tabs = [
   { id: "details", label: "1. Listing" },
   { id: "rooms", label: "2. 360° rooms" },
-  { id: "eyes", label: "3. Blueprint + eyes" },
+  { id: "eyes", label: "3. Blueprint (Optional)" },
 ] as const;
 
 export function OwnerStudio({
@@ -60,8 +60,7 @@ export function OwnerStudio({
     const result = await addRoom(formData);
     if (result.ok) {
       setPanoUrl("");
-      setMessage("360° room added. Place an eye on the blueprint next.");
-      setTab("eyes");
+      setMessage("360° room added! You can add another room below, or optionally add a blueprint in Step 3.");
     } else {
       setMessage(result.error);
     }
@@ -341,6 +340,23 @@ export function OwnerStudio({
 
       {tab === "eyes" ? (
         <div className="mt-6 space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-amber-50 border border-amber-200 p-5 text-amber-950 shadow-sm">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-800">
+                Step 3 is completely optional
+              </p>
+              <p className="mt-1 text-sm text-amber-900/80">
+                Don't have a floor plan or blueprint? You can skip this step anytime. Guests can still tour all your rooms in 360°!
+              </p>
+            </div>
+            <Link
+              href={`/listings/${property.id}`}
+              className="inline-flex items-center gap-2 rounded-full bg-terracotta px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-terracotta-dark transition cursor-pointer"
+            >
+              Skip & View Live Listing →
+            </Link>
+          </div>
+
           <section className="rounded-3xl bg-forest p-5 text-sand">
             <p className="text-[10px] uppercase tracking-[0.18em] text-gold">How step 3 works</p>
             <h2 className="mt-1 font-display text-2xl">Blueprint, then eyes</h2>

@@ -50,14 +50,28 @@ async function blobToPixels(blob: Blob) {
   return { data: image.data, w: canvas.width, h: canvas.height };
 }
 
-export async function stitchCubeToPano(faces: Record<CubeFace, Blob>) {
-  const loaded = {
+export async function stitchCubeToPano(faces: Partial<Record<CubeFace, Blob>>) {
+  if (!faces.front || !faces.right || !faces.back || !faces.left) {
+    throw new Error("Front, Right, Back, and Left walls are required.");
+  }
+
+  const loaded: Record<CubeFace, { data: Uint8ClampedArray; w: number; h: number }> = {
     front: await blobToPixels(faces.front),
     right: await blobToPixels(faces.right),
     back: await blobToPixels(faces.back),
     left: await blobToPixels(faces.left),
-    top: await blobToPixels(faces.top),
-    bottom: await blobToPixels(faces.bottom),
+    top: faces.top
+      ? await blobToPixels(faces.top)
+      : createFallbackFace(
+          [faces.front, faces.right, faces.back, faces.left],
+          "top"
+        ),
+    bottom: faces.bottom
+      ? await blobToPixels(faces.bottom)
+      : createFallbackFace(
+          [faces.front, faces.right, faces.back, faces.left],
+          "bottom"
+        ),
   };
 
   const outW = 2048;
@@ -130,8 +144,66 @@ export async function stitchCubeToPano(faces: Record<CubeFace, Blob>) {
 
   ctx.putImageData(out, 0, 0);
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob((value) => resolve(value), "image/jpeg", 0.88),
+    canvas.toBlob((value) => resolve(value), "image/jpeg", 0.88)
   );
   if (!blob) throw new Error("Could not stitch 360°.");
   return new File([blob], `room-360-${Date.now()}.jpg`, { type: "image/jpeg" });
+}
+
+function createFallbackFace(
+  _wallBlobs: (Blob | undefined)[],
+  type: "top" | "bottom"
+): { data: Uint8ClampedArray; w: number; h: number } {
+  const w = 512;
+  const h = 512;
+  const data = new Uint8ClampedArray(w * h * 4);
+  // Soft ceiling (warm off-white) or clean floor (warm stone neutral)
+  const [r, g, b] = type === "top" ? [242, 240, 235] : [65, 60, 56];
+  for (let i = 0; i < data.length; i += 4) {
+    const yRatio = ((i / 4 / w) | 0) / h;
+    const vignette = type === "top" ? 1 - yRatio * 0.08 : 0.9 + yRatio * 0.1;
+    data[i] = Math.round(r * vignette);
+    data[i + 1] = Math.round(g * vignette);
+    data[i + 2] = Math.round(b * vignette);
+    data[i + 3] = 255;
+  }
+  return { data, w, h };
+}
+
+export async function convertSinglePanoTo360(file: File | Blob): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const targetW = 2048;
+  const targetH = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process single photo pano.");
+
+  // If already close to 2:1 ratio (e.g. 1.8 to 2.2), draw direct
+  const ratio = bitmap.width / bitmap.height;
+  if (ratio >= 1.7 && ratio <= 2.3) {
+    ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+  } else {
+    // Fill background with soft neutral ceiling / floor gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, targetH);
+    grad.addColorStop(0, "#f0ede6");
+    grad.addColorStop(0.3, "#e2ded6");
+    grad.addColorStop(0.7, "#423d38");
+    grad.addColorStop(1, "#282522");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, targetW, targetH);
+
+    // Fit image horizontally in the central eye-level band
+    const drawH = Math.min(targetH, Math.round(targetW / ratio));
+    const drawY = Math.round((targetH - drawH) / 2);
+    ctx.drawImage(bitmap, 0, drawY, targetW, drawH);
+  }
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((value) => resolve(value), "image/jpeg", 0.9)
+  );
+  if (!blob) throw new Error("Could not convert panorama.");
+  return new File([blob], `single-pano-${Date.now()}.jpg`, { type: "image/jpeg" });
 }
