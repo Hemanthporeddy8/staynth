@@ -219,36 +219,44 @@ export async function createProperty(formData: FormData) {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  const created = await db
-    .insert(properties)
-    .values({
-      title,
-      slug: slugify(title),
-      tagline: String(formData.get("tagline") ?? "").trim() || "A new listing on Aerio",
-      description:
-        String(formData.get("description") ?? "").trim() ||
-        "Owner-listed stay with 360° rooms and a blueprint you can walk.",
-      type: String(formData.get("type") ?? "hotel"),
-      listingType: String(formData.get("listingType") ?? "rent"),
-      city: String(formData.get("city") ?? "").trim() || "Mumbai",
-      state: String(formData.get("state") ?? "").trim() || "Maharashtra",
-      address: String(formData.get("address") ?? "").trim() || "Address on request",
-      price: Number(formData.get("price") ?? 0) || 0,
-      bedrooms: Number(formData.get("bedrooms") ?? 1) || 1,
-      bathrooms: Number(formData.get("bathrooms") ?? 1) || 1,
-      maxGuests: Number(formData.get("maxGuests") ?? 2) || 2,
-      areaSqft: Number(formData.get("areaSqft") ?? 500) || 500,
-      coverImage,
-      images,
-      amenities: amenities.length ? amenities : ["360° tour", "View in plan"],
-      hostName: String(formData.get("hostName") ?? "").trim() || "Property owner",
-      hostRole: "Owner",
-      featured: false,
-      status: "active",
-    })
-    .returning({ id: properties.id });
+  let id: number | undefined;
+  try {
+    const created = await db
+      .insert(properties)
+      .values({
+        title,
+        slug: slugify(title),
+        tagline: String(formData.get("tagline") ?? "").trim() || "A new listing on Aerio",
+        description:
+          String(formData.get("description") ?? "").trim() ||
+          "Owner-listed stay with 360° rooms and a blueprint you can walk.",
+        type: String(formData.get("type") ?? "hotel"),
+        listingType: String(formData.get("listingType") ?? "rent"),
+        city: String(formData.get("city") ?? "").trim() || "Mumbai",
+        state: String(formData.get("state") ?? "").trim() || "Maharashtra",
+        address: String(formData.get("address") ?? "").trim() || "Address on request",
+        price: Number(formData.get("price") ?? 0) || 0,
+        bedrooms: Number(formData.get("bedrooms") ?? 1) || 1,
+        bathrooms: Number(formData.get("bathrooms") ?? 1) || 1,
+        maxGuests: Number(formData.get("maxGuests") ?? 2) || 2,
+        areaSqft: Number(formData.get("areaSqft") ?? 500) || 500,
+        coverImage,
+        images,
+        amenities: amenities.length ? amenities : ["360° tour", "View in plan"],
+        hostName: String(formData.get("hostName") ?? "").trim() || "Property owner",
+        hostRole: "Owner",
+        featured: false,
+        status: "active",
+      })
+      .returning({ id: properties.id });
 
-  const id = created[0]?.id;
+    id = created[0]?.id;
+  } catch (error) {
+    console.error("Database insert failed in createProperty:", error);
+    const message = error instanceof Error ? error.message : "Failed to save listing to database.";
+    return { ok: false as const, error: message };
+  }
+
   if (!id) return { ok: false as const, error: "Could not create listing." };
   touchListing(id);
   redirect(`/dashboard/properties/${id}`);

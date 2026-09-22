@@ -138,11 +138,13 @@ export async function getListingPlan(id: number) {
       )[0];
       const plan = (
         await db.select().from(floorPlans).where(eq(floorPlans.propertyId, id)).limit(1)
-      )[0];
+      )[0] ?? null;
 
-      if (property && plan) {
+      if (property) {
         const propertyRooms = await db.select().from(rooms).where(eq(rooms.propertyId, id));
-        const spots = await db.select().from(planHotspots).where(eq(planHotspots.floorPlanId, plan.id));
+        const spots = plan
+          ? await db.select().from(planHotspots).where(eq(planHotspots.floorPlanId, plan.id))
+          : [];
         const roomMap = Object.fromEntries(propertyRooms.map((room) => [room.id, room]));
         const hotspots = spots.map((spot) => ({
           ...spot,
@@ -150,7 +152,7 @@ export async function getListingPlan(id: number) {
         }));
         return {
           property: property as unknown as PropertyData,
-          plan: plan as unknown as FloorPlanData,
+          plan: plan as unknown as FloorPlanData | null,
           hotspots,
           rooms: propertyRooms as unknown as RoomData[],
         };
@@ -161,9 +163,9 @@ export async function getListingPlan(id: number) {
   }
 
   const prop = DEMO_PROPERTIES.find((p) => p.id === id) ?? DEMO_PROPERTIES[0];
-  const plan = DEMO_FLOOR_PLANS.find((pl) => pl.propertyId === prop.id) ?? DEMO_FLOOR_PLANS[0];
+  const plan = DEMO_FLOOR_PLANS.find((pl) => pl.propertyId === prop.id) ?? null;
   const propertyRooms = DEMO_ROOMS.filter((room) => room.propertyId === prop.id);
-  const spots = DEMO_HOTSPOTS.filter((h) => h.floorPlanId === plan.id);
+  const spots = plan ? DEMO_HOTSPOTS.filter((h) => h.floorPlanId === plan.id) : [];
   const roomMap = Object.fromEntries(propertyRooms.map((room) => [room.id, room]));
   const hotspots = spots.map((spot) => ({
     ...spot,
