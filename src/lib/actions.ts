@@ -251,9 +251,10 @@ export async function createProperty(formData: FormData) {
       .returning({ id: properties.id });
 
     id = created[0]?.id;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Database insert failed in createProperty:", error);
-    const message = error instanceof Error ? error.message : "Failed to save listing to database.";
+    const pgError = error?.cause || error;
+    const message = pgError?.message || pgError?.detail || error?.message || "Failed to save listing to database.";
     return { ok: false as const, error: message };
   }
 
