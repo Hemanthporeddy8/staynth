@@ -14,11 +14,21 @@ export function NewListingForm() {
   async function onSubmit(formData: FormData) {
     setPending(true);
     setError("");
-    formData.set("coverImage", cover);
-    formData.set("images", [cover, ...gallery].filter(Boolean).join(","));
-    const result = await createProperty(formData);
-    if (result && !result.ok) {
-      setError(result.error);
+    try {
+      formData.set("coverImage", cover);
+      formData.set("images", [cover, ...gallery].filter(Boolean).join(","));
+      const result = await createProperty(formData);
+      if (result?.ok && result.id) {
+        window.location.href = `/dashboard/properties/${result.id}`;
+        return;
+      }
+      if (result && !result.ok) {
+        setError(result.error);
+        setPending(false);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create listing.";
+      setError(message);
       setPending(false);
     }
   }
@@ -172,11 +182,15 @@ export function NewListingForm() {
         </div>
       ) : null}
 
-      {error ? <p className="text-sm text-terracotta">{error}</p> : null}
+      {error ? (
+        <div className="rounded-2xl bg-terracotta/10 p-4 text-sm text-terracotta ring-1 ring-terracotta/20">
+          {error}
+        </div>
+      ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-full bg-terracotta py-3 text-sm font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-full bg-terracotta py-3 text-sm font-semibold text-white cursor-pointer hover:bg-terracotta-dark transition shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {pending ? "Publishing…" : "Create listing & open studio"}
       </button>

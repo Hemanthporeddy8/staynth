@@ -259,7 +259,7 @@ export async function createProperty(formData: FormData) {
 
   if (!id) return { ok: false as const, error: "Could not create listing." };
   touchListing(id);
-  redirect(`/dashboard/properties/${id}`);
+  return { ok: true as const, id };
 }
 
 export async function updateProperty(formData: FormData) {

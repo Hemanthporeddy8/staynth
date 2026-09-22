@@ -22,6 +22,14 @@ body {
   color: var(--color-ink);
 }
 
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+[role="button"] {
+  cursor: pointer;
+}
+
 body {
   font-family: var(--font-sans);
   background-image:
