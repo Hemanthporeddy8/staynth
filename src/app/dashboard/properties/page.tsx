@@ -1,15 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { db } from "@/db";
-import { floorPlans, properties, rooms } from "@/db/schema";
 import { stayTypeLabel } from "@/lib/stay-types";
+import { getDashboardProperties } from "@/lib/data";
+import { DEMO_ROOMS, DEMO_FLOOR_PLANS } from "@/db/demo-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPropertiesPage() {
-  const rows = await db.select().from(properties);
-  const allRooms = await db.select().from(rooms);
-  const allPlans = await db.select().from(floorPlans);
+  const rows = await getDashboardProperties();
+  const allRooms = DEMO_ROOMS;
+  const allPlans = DEMO_FLOOR_PLANS;
 
   return (
     <main>

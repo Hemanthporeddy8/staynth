@@ -1,13 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
 import { BoxSelect, MapPin, Star, View } from "lucide-react";
-import { db } from "@/db";
-import { properties, reviews, rooms } from "@/db/schema";
-import { ensureSeeded } from "@/db/seed";
 import { BookingWidget } from "@/components/BookingWidget";
 import { stayTypeLabel } from "@/lib/stay-types";
+import { getListingDetail } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -16,24 +13,12 @@ export default async function ListingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await ensureSeeded();
   const { id } = await params;
   const propertyId = Number(id);
   if (!propertyId) notFound();
 
-  const property = (
-    await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1)
-  )[0];
+  const { property, rooms: propertyRooms, reviews: propertyReviews } = await getListingDetail(propertyId);
   if (!property) notFound();
-
-  const propertyRooms = await db
-    .select()
-    .from(rooms)
-    .where(eq(rooms.propertyId, propertyId));
-  const propertyReviews = await db
-    .select()
-    .from(reviews)
-    .where(eq(reviews.propertyId, propertyId));
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-8 md:px-8">

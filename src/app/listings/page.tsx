@@ -1,10 +1,7 @@
-import { and, eq, gte, ilike, or, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { properties } from "@/db/schema";
-import { ensureSeeded } from "@/db/seed";
 import { PropertyCard } from "@/components/PropertyCard";
 import { SearchBar } from "@/components/SearchBar";
 import { STAY_TYPES } from "@/lib/stay-types";
+import { getListings } from "@/lib/data";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -14,24 +11,8 @@ export default async function ListingsPage({
 }: {
   searchParams: Promise<{ city?: string; listingType?: string; type?: string; guests?: string; tour?: string }>;
 }) {
-  await ensureSeeded();
   const params = await searchParams;
-  const filters = [];
-
-  if (params.city) {
-    filters.push(
-      or(ilike(properties.city, `%${params.city}%`), ilike(properties.state, `%${params.city}%`))!,
-    );
-  }
-  if (params.listingType) filters.push(eq(properties.listingType, params.listingType));
-  if (params.type) filters.push(eq(properties.type, params.type));
-  if (params.guests) filters.push(gte(properties.maxGuests, Number(params.guests)));
-
-  const rows = await db
-    .select()
-    .from(properties)
-    .where(filters.length ? and(...filters) : sql`true`);
-
+  const rows = await getListings(params);
   const types = STAY_TYPES;
 
   return (

@@ -1,15 +1,12 @@
-import { desc } from "drizzle-orm";
-import { db } from "@/db";
-import { bookings, properties } from "@/db/schema";
 import { formatINR } from "@/lib/format";
 import { BookingStatusForm } from "@/components/BookingStatusForm";
+import { getDashboardBookings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardBookingsPage() {
-  const rows = await db.select().from(bookings).orderBy(desc(bookings.createdAt));
-  const listingRows = await db.select().from(properties);
-  const titles = Object.fromEntries(listingRows.map((p) => [p.id, p.title]));
+  const rows = await getDashboardBookings();
+  const titles = Object.fromEntries(rows.map((r) => [r.propertyId, (r as any).propertyTitle || "Listing"]));
 
   return (
     <main>

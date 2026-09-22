@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
 import { ArrowLeft, View } from "lucide-react";
-import { db } from "@/db";
-import { floorPlans, planHotspots, properties, rooms } from "@/db/schema";
-import { ensureSeeded } from "@/db/seed";
 import { FloorPlanViewer } from "@/components/FloorPlanViewer";
+import { getListingPlan } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,27 +11,10 @@ export default async function PlanPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await ensureSeeded();
   const { id } = await params;
   const propertyId = Number(id);
-  const property = (
-    await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1)
-  )[0];
-  if (!property) notFound();
-
-  const plan = (
-    await db.select().from(floorPlans).where(eq(floorPlans.propertyId, propertyId)).limit(1)
-  )[0];
-  if (!plan) notFound();
-
-  const propertyRooms = await db.select().from(rooms).where(eq(rooms.propertyId, propertyId));
-  const spots = await db.select().from(planHotspots).where(eq(planHotspots.floorPlanId, plan.id));
-  const roomMap = Object.fromEntries(propertyRooms.map((room) => [room.id, room]));
-
-  const hotspots = spots.map((spot) => ({
-    ...spot,
-    room: spot.roomId ? roomMap[spot.roomId] ?? null : null,
-  }));
+  const { property, plan, hotspots, rooms: propertyRooms } = await getListingPlan(propertyId);
+  if (!property || !plan) notFound();
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 md:px-8">

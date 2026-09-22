@@ -1,23 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
 import { BoxSelect, Compass, MapPinned, View } from "lucide-react";
-import { db } from "@/db";
-import { properties } from "@/db/schema";
-import { ensureSeeded } from "@/db/seed";
 import { PropertyCard } from "@/components/PropertyCard";
 import { SearchBar } from "@/components/SearchBar";
+import { getHomeProperties } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  await ensureSeeded();
-  const featured = await db
-    .select()
-    .from(properties)
-    .where(eq(properties.featured, true))
-    .orderBy(desc(properties.rating));
-  const more = await db.select().from(properties).orderBy(desc(properties.rating));
+  const { featured, more } = await getHomeProperties();
 
   return (
     <main>

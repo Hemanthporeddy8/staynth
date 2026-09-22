@@ -1,22 +1,18 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
-import { db } from "@/db";
-import { bookings, customers, properties } from "@/db/schema";
 import { formatINR } from "@/lib/format";
+import { getDashboardStats } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const allBookings = await db.select().from(bookings);
-  const allCustomers = await db.select().from(customers);
-  const allProperties = await db.select().from(properties);
-  const recent = await db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(6);
-
-  const revenue = allBookings.reduce((sum, row) => sum + row.totalAmount, 0);
+  const stats = await getDashboardStats();
+  const allBookings = stats.recentBookings;
+  const allProperties = stats.properties;
+  const revenue = stats.revenue;
   const confirmed = allBookings.filter((row) => row.status === "confirmed").length;
-  const leads = allCustomers.filter((row) => row.status === "lead").length;
-
+  const leads = stats.customersCount;
   const propertyTitle = Object.fromEntries(allProperties.map((p) => [p.id, p.title]));
+  const recent = stats.recentBookings.slice(0, 6);
 
   return (
     <main>

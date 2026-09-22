@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
 import { ArrowLeft, BoxSelect } from "lucide-react";
-import { db } from "@/db";
-import { properties, rooms } from "@/db/schema";
-import { ensureSeeded } from "@/db/seed";
 import { TourStage } from "@/components/TourStage";
+import { getListingTour } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -16,23 +13,11 @@ export default async function TourPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ room?: string }>;
 }) {
-  await ensureSeeded();
   const { id } = await params;
   const query = await searchParams;
   const propertyId = Number(id);
-  const property = (
-    await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1)
-  )[0];
-  if (!property) notFound();
-
-  const propertyRooms = await db
-    .select()
-    .from(rooms)
-    .where(eq(rooms.propertyId, propertyId));
-  if (propertyRooms.length === 0) notFound();
-
-  const selected =
-    propertyRooms.find((room) => String(room.id) === query.room) ?? propertyRooms[0];
+  const { property, rooms: propertyRooms, selected } = await getListingTour(propertyId, query.room);
+  if (!property || !selected || propertyRooms.length === 0) notFound();
 
   return (
     <main className="bg-ink text-paper">

@@ -1,13 +1,11 @@
-import { desc } from "drizzle-orm";
-import { db } from "@/db";
-import { bookings, customers } from "@/db/schema";
 import { CustomerManager } from "@/components/CustomerManager";
+import { getDashboardCustomers, getDashboardBookings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardCustomersPage() {
-  const rows = await db.select().from(customers).orderBy(desc(customers.createdAt));
-  const allBookings = await db.select().from(bookings);
+  const rows = await getDashboardCustomers();
+  const allBookings = await getDashboardBookings();
 
   const cards = rows.map((customer) => ({
     ...customer,

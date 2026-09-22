@@ -19,8 +19,8 @@ async function runEnsureSeeded() {
   if (!getDatabaseUrl()) return;
 
   try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS properties (
+    const ddlStatements = [
+      sql`CREATE TABLE IF NOT EXISTS properties (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
@@ -47,9 +47,8 @@ async function runEnsureSeeded() {
         featured BOOLEAN NOT NULL DEFAULT false,
         status TEXT NOT NULL DEFAULT 'active',
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS rooms (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
         property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
@@ -57,26 +56,23 @@ async function runEnsureSeeded() {
         panorama_url TEXT NOT NULL,
         thumbnail_url TEXT NOT NULL,
         sort_order INTEGER NOT NULL DEFAULT 0
-      );
-
-      CREATE TABLE IF NOT EXISTS floor_plans (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS floor_plans (
         id SERIAL PRIMARY KEY,
         property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         image_url TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT ''
-      );
-
-      CREATE TABLE IF NOT EXISTS plan_hotspots (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS plan_hotspots (
         id SERIAL PRIMARY KEY,
         floor_plan_id INTEGER NOT NULL REFERENCES floor_plans(id) ON DELETE CASCADE,
         room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
         label TEXT NOT NULL,
         x_percent REAL NOT NULL,
         y_percent REAL NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS customers (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT NOT NULL,
@@ -87,9 +83,8 @@ async function runEnsureSeeded() {
         notes TEXT NOT NULL DEFAULT '',
         total_spent INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS bookings (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
         property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
@@ -104,17 +99,20 @@ async function runEnsureSeeded() {
         status TEXT NOT NULL DEFAULT 'confirmed',
         listing_type TEXT NOT NULL DEFAULT 'rent',
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS reviews (
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
         property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         author TEXT NOT NULL,
         rating INTEGER NOT NULL,
         comment TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
+      )`,
+    ];
+
+    for (const stmt of ddlStatements) {
+      await db.execute(stmt);
+    }
 
     const existing = await db.select({ id: properties.id }).from(properties).limit(1);
     if (existing.length > 0) return;

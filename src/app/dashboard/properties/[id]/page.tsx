@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { floorPlans, planHotspots, properties, rooms } from "@/db/schema";
 import { OwnerStudio } from "@/components/OwnerStudio";
+import { getListingPlan } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,23 +12,8 @@ export default async function PropertyStudioPage({
 }) {
   const { id } = await params;
   const propertyId = Number(id);
-  const property = (
-    await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1)
-  )[0];
+  const { property, plan, hotspots, rooms: propertyRooms } = await getListingPlan(propertyId);
   if (!property) notFound();
-
-  const plan = (
-    await db.select().from(floorPlans).where(eq(floorPlans.propertyId, propertyId)).limit(1)
-  )[0] ?? null;
-  const propertyRooms = await db.select().from(rooms).where(eq(rooms.propertyId, propertyId));
-  const spots = plan
-    ? await db.select().from(planHotspots).where(eq(planHotspots.floorPlanId, plan.id))
-    : [];
-  const roomMap = Object.fromEntries(propertyRooms.map((room) => [room.id, room]));
-  const hotspots = spots.map((spot) => ({
-    ...spot,
-    room: spot.roomId ? roomMap[spot.roomId] ?? null : null,
-  }));
 
   const { createdAt: _createdAt, ...listing } = property;
 
