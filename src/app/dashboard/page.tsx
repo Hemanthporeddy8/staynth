@@ -82,7 +82,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <p className="mt-6 text-xs uppercase tracking-[0.16em] text-gold">
-            {allProperties.length} live listings · {allCustomers.length} customers
+            {allProperties.length} live listings · {stats.customersCount} customers
           </p>
         </section>
       </div>
