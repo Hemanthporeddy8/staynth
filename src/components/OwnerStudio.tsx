@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, ImagePlus, Map, Trash2, View } from "lucide-react";
+import { Eye, ImagePlus, Loader2, Map, Trash2, View } from "lucide-react";
 import type { FloorPlan, PlanHotspot, Property, Room } from "@/db/schema";
 import {
   addRoom,
@@ -44,6 +44,11 @@ export function OwnerStudio({
   const [planUrl, setPlanUrl] = useState(plan?.imageUrl ?? "");
   const [planMode, setPlanMode] = useState<"upload" | "draw">(plan ? "upload" : "draw");
 
+  const [roomName, setRoomName] = useState("");
+  const [roomDescription, setRoomDescription] = useState("");
+  const [savingRoom, setSavingRoom] = useState(false);
+  const [deletingRoomId, setDeletingRoomId] = useState<number | null>(null);
+
   async function onSaveDetails(formData: FormData) {
     formData.set("coverImage", cover);
     formData.set("images", gallery.join(","));
@@ -53,16 +58,39 @@ export function OwnerStudio({
 
   async function onAddRoom(formData: FormData) {
     if (!panoUrl) {
-      setMessage("Upload a 360° photo before saving the room.");
+      setMessage("Capture or upload a 360° photo before saving the room.");
       return;
     }
+    const finalName = roomName.trim() || String(formData.get("name") ?? "").trim() || "Room";
+    setSavingRoom(true);
     formData.set("panoramaUrl", panoUrl);
-    const result = await addRoom(formData);
-    if (result.ok) {
-      setPanoUrl("");
-      setMessage("360° room added! You can add another room below, or optionally add a blueprint in Step 3.");
-    } else {
-      setMessage(result.error);
+    formData.set("name", finalName);
+    formData.set("description", roomDescription.trim() || String(formData.get("description") ?? "").trim());
+    try {
+      const result = await addRoom(formData);
+      if (result.ok) {
+        setPanoUrl("");
+        setRoomName("");
+        setRoomDescription("");
+        setMessage(`"${finalName}" saved! You can add another room or preview your listing.`);
+      } else {
+        setMessage(result.error);
+      }
+    } finally {
+      setSavingRoom(false);
+    }
+  }
+
+  async function onDeleteRoomItem(id: number) {
+    setDeletingRoomId(id);
+    const fd = new FormData();
+    fd.set("id", String(id));
+    fd.set("propertyId", String(property.id));
+    try {
+      await deleteRoom(fd);
+      setMessage("Room deleted.");
+    } finally {
+      setDeletingRoomId(null);
     }
   }
 
@@ -287,15 +315,19 @@ export function OwnerStudio({
               <input
                 name="name"
                 required
-                placeholder="Master bedroom"
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                placeholder="e.g. Master Bedroom, Courtyard, Living Hall"
                 className="mt-1 w-full rounded-xl border border-ink/10 bg-paper px-3 py-2 text-sm text-ink"
               />
             </label>
             <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-soft">
-              Note for guests
+              Note for guests (optional)
               <input
                 name="description"
-                placeholder="Morning light, lake side"
+                value={roomDescription}
+                onChange={(e) => setRoomDescription(e.target.value)}
+                placeholder="e.g. Pool view, king bed, sunrise light"
                 className="mt-1 w-full rounded-xl border border-ink/10 bg-paper px-3 py-2 text-sm text-ink"
               />
             </label>
@@ -304,29 +336,46 @@ export function OwnerStudio({
             </div>
             <button
               type="submit"
-              className="mt-4 w-full rounded-full bg-terracotta py-2.5 text-sm font-semibold text-white"
+              disabled={savingRoom || !panoUrl}
+              className="mt-4 w-full rounded-full bg-terracotta py-2.5 text-sm font-semibold text-white hover:bg-terracotta-dark transition cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save 360° room
+              {savingRoom ? "Saving room…" : !panoUrl ? "1. Capture or upload 360° photo first" : "Save 360° room"}
             </button>
           </form>
           <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                Saved Rooms ({rooms.length})
+              </p>
+              <p className="text-[11px] text-ink-soft">Tap trash icon to delete duplicates</p>
+            </div>
             {rooms.map((room) => (
-              <article key={room.id} className="flex gap-3 rounded-3xl bg-white p-3 ring-1 ring-ink/8">
-                <img src={room.thumbnailUrl} alt="" className="h-20 w-28 rounded-2xl object-cover" />
+              <article key={room.id} className="flex gap-3 rounded-3xl bg-white p-3 ring-1 ring-ink/8 shadow-sm">
+                <img src={room.thumbnailUrl} alt="" className="h-20 w-28 rounded-2xl object-cover bg-paper" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{room.name}</p>
-                  <p className="text-xs text-ink-soft">{room.description}</p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-terracotta">
-                    <View className="h-3 w-3" /> 360° ready
-                  </p>
+                  <p className="font-semibold text-ink">{room.name}</p>
+                  <p className="text-xs text-ink-soft line-clamp-1">{room.description || "360° tour available"}</p>
+                  <Link
+                    href={`/listings/${property.id}/tour?room=${room.id}`}
+                    target="_blank"
+                    className="mt-2 inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-terracotta hover:underline font-semibold"
+                  >
+                    <View className="h-3.5 w-3.5" /> View in 360°
+                  </Link>
                 </div>
-                <form action={onDeleteRoom}>
-                  <input type="hidden" name="id" value={room.id} />
-                  <input type="hidden" name="propertyId" value={property.id} />
-                  <button type="submit" className="rounded-full p-2 text-clay hover:bg-paper">
+                <button
+                  type="button"
+                  onClick={() => void onDeleteRoomItem(room.id)}
+                  disabled={deletingRoomId === room.id}
+                  className="rounded-full p-2 text-clay hover:bg-paper cursor-pointer disabled:opacity-50 self-center"
+                  title="Delete this room"
+                >
+                  {deletingRoomId === room.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-terracotta" />
+                  ) : (
                     <Trash2 className="h-4 w-4" />
-                  </button>
-                </form>
+                  )}
+                </button>
               </article>
             ))}
             {rooms.length === 0 ? (
