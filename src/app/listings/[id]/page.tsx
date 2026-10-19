@@ -6,7 +6,8 @@ import { BookingWidget } from "@/components/BookingWidget";
 import { stayTypeLabel } from "@/lib/stay-types";
 import { getListingDetail } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+// ISR: cache on Vercel edge CDN for 60 s, refresh in background
+export const revalidate = 60;
 
 export default async function ListingPage({
   params,

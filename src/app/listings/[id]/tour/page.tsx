@@ -4,7 +4,8 @@ import { ArrowLeft, BoxSelect } from "lucide-react";
 import { TourStage } from "@/components/TourStage";
 import { getListingTour } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+// ISR: cache on Vercel edge CDN for 60 s, refresh in background
+export const revalidate = 60;
 
 export default async function TourPage({
   params,

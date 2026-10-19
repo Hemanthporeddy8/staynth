@@ -1,4 +1,15 @@
-export async function compressImage(file: File, maxWidth: number) {
+/**
+ * Compress an image using canvas before upload.
+ * Tries WebP first (40–60% smaller), falls back to JPEG.
+ * @param file   Original image file
+ * @param maxWidth  Max width in pixels to scale down to
+ * @param quality   0–1 quality (default 0.82)
+ */
+export async function compressImage(
+  file: File,
+  maxWidth: number,
+  quality = 0.82,
+): Promise<File> {
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, maxWidth / bitmap.width);
@@ -8,20 +19,47 @@ export async function compressImage(file: File, maxWidth: number) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((value) => resolve(value), "image/jpeg", 0.86),
-    );
     bitmap.close();
+
+    // Try WebP first — ~50% smaller than JPEG with same visual quality
+    const supportsWebP = canvas
+      .toDataURL("image/webp")
+      .startsWith("data:image/webp");
+
+    const mimeType = supportsWebP ? "image/webp" : "image/jpeg";
+    const ext = supportsWebP ? ".webp" : ".jpg";
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((value) => resolve(value), mimeType, quality),
+    );
     if (!blob) return file;
-    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+
+    const originalKB = Math.round(file.size / 1024);
+    const compressedKB = Math.round(blob.size / 1024);
+    console.log(
+      `[compress] ${file.name}: ${originalKB} KB → ${compressedKB} KB (${Math.round((1 - blob.size / file.size) * 100)}% smaller, ${mimeType})`,
+    );
+
+    return new File([blob], file.name.replace(/\.\w+$/, ext), {
+      type: mimeType,
+    });
   } catch {
     return file;
   }
 }
 
-export async function uploadImage(file: File, kind: "photo" | "pano" | "plan" = "photo") {
-  const maxWidth = kind === "pano" ? 4096 : kind === "plan" ? 2400 : 1800;
-  const prepared = await compressImage(file, maxWidth);
+export async function uploadImage(
+  file: File,
+  kind: "photo" | "pano" | "plan" = "photo",
+) {
+  // Kind-specific quality and max dimension settings
+  const config = {
+    pano:  { maxWidth: 4096, quality: 0.88 }, // Keep panos high quality — they're viewed up close
+    plan:  { maxWidth: 2400, quality: 0.84 },
+    photo: { maxWidth: 1800, quality: 0.80 }, // Cover/gallery photos: aggressive compression
+  }[kind];
+
+  const prepared = await compressImage(file, config.maxWidth, config.quality);
   const body = new FormData();
   body.append("file", prepared);
   const response = await fetch("/api/upload", { method: "POST", body });
@@ -31,6 +69,7 @@ export async function uploadImage(file: File, kind: "photo" | "pano" | "plan" = 
   }
   return data.url;
 }
+
 
 export type CubeFace = "front" | "right" | "back" | "left" | "top" | "bottom";
 

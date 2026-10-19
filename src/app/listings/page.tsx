@@ -4,7 +4,8 @@ import { STAY_TYPES } from "@/lib/stay-types";
 import { getListings } from "@/lib/data";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+// ISR: cache this page on Vercel's edge CDN for 60 s, then refresh in background
+export const revalidate = 60;
 
 export default async function ListingsPage({
   searchParams,

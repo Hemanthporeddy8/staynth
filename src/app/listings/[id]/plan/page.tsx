@@ -4,7 +4,8 @@ import { ArrowLeft, View } from "lucide-react";
 import { FloorPlanViewer } from "@/components/FloorPlanViewer";
 import { getListingPlan } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+// ISR: cache on Vercel edge CDN for 60 s, refresh in background
+export const revalidate = 60;
 
 export default async function PlanPage({
   params,

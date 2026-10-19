@@ -22,6 +22,7 @@ export function TourStage({
           key={active.id}
           src={active.panoramaUrl}
           caption={active.description}
+          thumbnail={active.thumbnailUrl}
         />
       </div>
       <div className="mx-auto flex max-w-7xl gap-3 overflow-x-auto px-5 py-5 md:px-8">
