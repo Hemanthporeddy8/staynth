@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "@photo-sphere-viewer/core/index.css";
 
 export function PanoramaViewer({
@@ -11,6 +11,7 @@ export function PanoramaViewer({
   caption?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [loadingMsg, setLoadingMsg] = useState<"network" | "cache" | null>("network");
 
   useEffect(() => {
     const container = containerRef.current;
@@ -21,8 +22,25 @@ export function PanoramaViewer({
     let cancelled = false;
 
     async function boot() {
+      // Check if the Service Worker has this panorama cached already
+      let isCached = false;
+      if ("caches" in window) {
+        try {
+          const cache = await caches.open("staynth-pano-v1");
+          const cached = await cache.match(src);
+          if (cached) {
+            isCached = true;
+            setLoadingMsg("cache");
+          }
+        } catch {
+          /* caches API not available — fine */
+        }
+      }
+      if (!isCached) setLoadingMsg("network");
+
       const { Viewer } = await import("@photo-sphere-viewer/core");
       if (cancelled || !containerRef.current) return;
+
       viewer = new Viewer({
         container: containerRef.current,
         panorama: src,
@@ -31,13 +49,17 @@ export function PanoramaViewer({
         defaultZoomLvl: 40,
         minFov: 30,
         maxFov: 90,
-        loadingTxt: "Opening 360° view…",
+        // Show cache hint in loading text
+        loadingTxt: isCached ? "Loading from device cache…" : "Opening 360° view…",
         touchmoveTwoFingers: false,
         mousewheelCtrlKey: false,
       });
+
+      setLoadingMsg(null);
     }
 
     boot().catch(() => {
+      setLoadingMsg(null);
       /* viewer will show its own error surface */
     });
 
@@ -47,5 +69,16 @@ export function PanoramaViewer({
     };
   }, [src, caption]);
 
-  return <div ref={containerRef} className="psv-host h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      {/* Cache indicator badge */}
+      {loadingMsg === "cache" && (
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-green-600/90 px-2.5 py-1 text-[10px] font-semibold text-white shadow">
+          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          Cached on device
+        </div>
+      )}
+      <div ref={containerRef} className="psv-host h-full w-full" />
+    </div>
+  );
 }

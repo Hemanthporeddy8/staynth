@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Fraunces, Outfit } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { SwRegistrar } from "@/components/SwRegistrar";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${fraunces.variable} ${outfit.variable} font-sans antialiased`}>
+        <SwRegistrar />
         <Navbar />
         {children}
         <Footer />
